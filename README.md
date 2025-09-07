@@ -27,5 +27,5 @@ Todas as propriedades foram calculadas usando o Software PropSection 1.0.4
 
 ## Capturas de tela
 - ![Exemplo 1](docs/Secao_W.png)
-- ![Exemplo 2](docs/Captura de tela 2025-09-06 214632.png)
-- ![Exemplo 3](docs/Captura de tela 2025-09-06 214651.png)
+- ![Exemplo 2](docs/Secao_I.png)
+- ![Exemplo 3](docs/Secao_U.png)
