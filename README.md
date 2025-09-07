@@ -20,8 +20,10 @@ Todas as propriedades foram calculadas usando o Software PropSection 1.0.4
 
 ---
 
-## À melhorar
+## Atualizações futuras
 - Ainda só existem códicos para desenhar seções I, U e W, mais seções em breve (códicos no módulo secao.py)
+- a grade atual é milimetrada, ainda quero criar a grade em polegadas.
+- implementar botões para exportar a seção selecionada em .xlsx(Excel), .dxf(CAD), e .cont(PropSection)
 
 ---
 
