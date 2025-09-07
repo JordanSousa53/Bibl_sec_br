@@ -22,3 +22,10 @@ Todas as propriedades foram calculadas usando o Software PropSection 1.0.4
 
 ## À melhorar
 - Ainda só existem códicos para desenhar seções I, U e W, mais seções em breve (códicos no módulo secao.py)
+
+---
+
+## Capturas de tela
+- ![Exemplo 1](docs/Captura de tela 2025-09-06 214535.png)
+- ![Exemplo 2](docs/Captura de tela 2025-09-06 214632.png)
+- ![Exemplo 3](docs/Captura de tela 2025-09-06 214651.png)
