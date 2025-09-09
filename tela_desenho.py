@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import QWidget, QGraphicsScene, QGraphicsView, QLabel
 from PyQt6.QtGui import QColor, QBrush, QPen, QCursor, QPolygonF, QTransform, QPainter
-from PyQt6.QtCore import Qt, QPoint, QPointF, QRectF
+from PyQt6.QtCore import Qt, QPoint, QPointF, QRectF, QSizeF
 
 from secao_path import Pontos, SecaoParametricaDesenho
 from grade_cartesiana import Grade
@@ -14,11 +14,10 @@ class Olho(QGraphicsView):
         self.coordenadas = None
 
         # Variáveis para zoom
-        self.scale(5, -5)  # Altera o eixo y positivo para cima
         self.zoom_atual = 1.0
         self.zoom_factor = 1.1
         self.zoom_steps = 0
-        self.zoom_step_limit = 8
+        self.zoom_step_limit = 5
 
         # Variáveis para pan
         self._pan = False
@@ -65,7 +64,6 @@ class Olho(QGraphicsView):
     # Função de zoom
     def wheelEvent(self, event):
         """Função personalisada de zoom na tela"""
-        mouse_scene_pos = self.mapToScene(event.position().toPoint())
         if event.angleDelta().y() > 0:  # Zoom in
             if self.zoom_steps < self.zoom_step_limit:
                 fator = self.zoom_factor
@@ -78,13 +76,14 @@ class Olho(QGraphicsView):
                 self.zoom_steps -= 1
             else:
                 return
+        print(self.zoom_atual)
         self.zoom_atual = self.zoom_factor ** self.zoom_steps
-
-        mouse_viewport_pos = event.position().toPoint()
         self.scale(fator, fator)
-        mouse_scene_pos_novo = self.mapToScene(mouse_viewport_pos)
-        deslocamento = mouse_scene_pos_novo - mouse_scene_pos
-        self.translate(deslocamento.x(), deslocamento.y())
+
+        # Ajuste dos pontos
+        for ponto in self.scene().items():
+            if isinstance(ponto, Pontos):
+                ponto.setScale(1 / self.zoom_atual)
     
     def resizeEvent(self, event):
         """Quando a janela for redimensionada, ajusta a área lógica da tela"""
@@ -126,43 +125,58 @@ class Tela(QGraphicsScene):
         """Dá uma referencia da classe QGraphicsView"""
         self.olho = olho
     
-    # Ajuste de tamanho de tela
     def ajustar_area_logica(self):
-        """Ajusta o tamanho da área lógica da tela"""
-        # dados da janela e view
-        janela_x = self.olho.viewport().width()
-        janela_y = self.olho.viewport().height()
-        zoom_minimo = ((1/self.olho.zoom_factor) ** self.olho.zoom_step_limit) * 5
-        proporcao = janela_y / janela_x
+        """Ajusta a área lógica do desenho, baseado no nível mínimo de zoom, tamanho da seção desenhada e proporção da tela"""
+        # Proporção da janela
+        w_janela = self.olho.width()
+        h_janela = self.olho.height()
+        prop_janela = h_janela / w_janela
 
-        # dados do desenho
+        # proporção da seção desenhada
         for item in self.items():
             if isinstance(item, SecaoParametricaDesenho):
-                rect_item = item.mapToScene(item.boundingRect()).boundingRect()
+                retang_item = item.mapToScene(item.boundingRect()).boundingRect()
                 break
+        w_secao = retang_item.width()
+        h_secao = retang_item.height()
+        prop_secao = h_secao / w_secao
+
+        # Nível mínimo de zoom
+        nivel_min = self.olho.zoom_factor ** -self.olho.zoom_step_limit
         
-        # Centro do item para manter centralizado
-        cx = rect_item.center().x()
-        cy = rect_item.center().y()
-
-        # tamanho alvo da cena no zoom mínimo
-        largura_alvo = janela_x / zoom_minimo
-        altura_alvo  = janela_y / zoom_minimo
-
-        # ajustar para manter a proporção da janela
-        if altura_alvo / largura_alvo > proporcao:
-            # Está mais alto que a janela, ajusta pela largura
-            altura_alvo = (largura_alvo * proporcao) + rect_item.height()
+        # Ajustando proporção do retângulo da seção desenhada em relação à proporção da tela
+        if prop_secao >= prop_janela:
+            # Seção está mais alta que a viewport: sobe a largura para ajustar
+            nw_secao = h_secao / prop_janela
+            nh_secao = h_secao
         else:
-            # Está mais largo que a janela, ajusta pela altura
-            largura_alvo = (altura_alvo / proporcao) + rect_item.width()
+            # Viewport está mais alta que seção: sobe a altura para ajustar
+            nw_secao = w_secao
+            nh_secao = w_secao * prop_janela
         
-        rect_cena = QRectF(cx - largura_alvo / 2,
-                           cy - altura_alvo / 2,
-                           largura_alvo,
-                           altura_alvo)
-        self.setSceneRect(rect_cena)
-        self.olho.centralizar_tela(cx, cy)
+        # Adicionando fator do nível mínimo de zoom
+        nw_secao /= nivel_min
+        nh_secao /= nivel_min
+        
+        # Centro do desenho para calcular coordenadas do retangulo por ele
+        cx = retang_item.center().x()
+        cy = retang_item.center().y()
+        
+        # Dimensoes do novo retangulo + margens
+        p_topleft = QPointF(cx - nw_secao / 2, cy - nh_secao / 2)
+        n_tamanho = QSizeF(nw_secao, nh_secao)
+        novo_retangulo = QRectF(p_topleft, n_tamanho)
+        margem = 50
+        novo_retangulo.adjust(-margem, -margem, margem, margem)
+
+        # Calculando e aplicando novo fator de escala
+        fator = round(w_janela / novo_retangulo.width(), 2)
+        self.olho.resetTransform()
+        self.olho.scale(fator, -fator)
+        self.olho.zoom_atual = fator
+
+        self.setSceneRect(novo_retangulo)
+        self.olho.centerOn(cx, cy)
 
 
 class TelaRobusta(QWidget):
@@ -193,7 +207,7 @@ class TelaRobusta(QWidget):
     
     def desenha_simbologia(self):
         """Desenha a simbologia da direção dos eixos"""
-        cor = QColor('#888888')
+        cor = QColor("#343A36")
         caneta = QPen(cor)
         pincel = QBrush(cor)
         tamanho = 40
